@@ -29,13 +29,14 @@ func NewHomeAssistantVehicleFromConfig(other map[string]any) (api.Vehicle, error
 		Token_  string `mapstructure:"token"` // TODO deprecated
 		Home    string // TODO deprecated
 		Sensors struct {
-			Soc        string // required
-			Range      string // optional
-			Status     string // optional
-			LimitSoc   string // optional
-			Odometer   string // optional
-			Climater   string // optional
-			FinishTime string // optional
+			Soc              string // required
+			Range            string // optional
+			Status           string // optional
+			LimitSoc         string // optional
+			Odometer         string // optional
+			Climater         string // optional
+			FinishTime       string // optional
+			ChargingTimeLeft string // optional, ignored if FinishTime is set
 		}
 		Services struct {
 			Start         string `mapstructure:"start_charging"` // script.* optional
@@ -102,6 +103,8 @@ func NewHomeAssistantVehicleFromConfig(other map[string]any) (api.Vehicle, error
 	}
 	if cc.Sensors.FinishTime != "" {
 		finish = func() (time.Time, error) { return res.finishTime(cc.Sensors.FinishTime) }
+	} else if cc.Sensors.ChargingTimeLeft != "" {
+		finish = func() (time.Time, error) { return res.chargingTimeLeft(cc.Sensors.ChargingTimeLeft) }
 	}
 	if cc.Services.Start != "" && cc.Services.Stop != "" {
 		enable = func(enable bool) error { return res.enable(cc.Services.Start, cc.Services.Stop, enable) }
@@ -144,6 +147,15 @@ func (v *HomeAssistant) finishTime(entity string) (time.Time, error) {
 	}
 
 	return time.Parse(time.RFC3339, s)
+}
+
+func (v *HomeAssistant) chargingTimeLeft(entity string) (time.Time, error) {
+	minutes, err := v.conn.GetFloatState(entity)
+	if err != nil {
+	        return time.Time{}, err
+	}
+
+	return time.Now().Add(time.Duration(minutes) * time.Minute), nil
 }
 
 func (v *HomeAssistant) enable(on, off string, enable bool) error {

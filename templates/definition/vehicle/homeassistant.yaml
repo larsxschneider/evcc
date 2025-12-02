@@ -64,10 +64,16 @@ params:
     example: "binary_sensor.vehicle_climater"
   - name: finishTime
     description:
-      de: Ladeende (ISO8601 oder Unix)
-      en: Finish time (ISO8601 or Unix)
+      de: Ladeende (ISO8601 oder Unix; überschreibt chargingTimeLeft)
+      en: Finish time (ISO8601 or Unix; overwrites chargingTimeLeft)
     service: homeassistant/entities?uri={uri}&domain=sensor
     example: "sensor.vehicle_finish_time"
+  - name: chargingTimeLeft
+    description:
+      de: Ladeende in Minuten
+      en: Finish time in minutes
+    service: homeassistant/entities?uri={uri}&domain=sensor
+    example: "sensor.vehicle_charging_time_left"
   - name: start_charging
     description:
       de: Service zum Laden starten
@@ -108,6 +114,7 @@ render: |
     odometer: {{ .odometer }}
     climater: {{ .climater }}
     finishTime: {{ .finishTime }}
+    chargingTimeLeft: {{ .chargingTimeLeft }}
   services:
     start_charging: {{ .start_charging }}
     stop_charging: {{ .stop_charging }}
