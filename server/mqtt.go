@@ -234,8 +234,16 @@ func (m *MQTT) listenSiteSetters(topic string, site site.API) error {
 			if m == nil {
 				m = new(api.BatteryUnknown)
 			}
-			return site.SetBatteryModeExternal(*m)
+			return site.SetBatteryModeExternalSoc(*m, 0)
 		})},
+		{"batteryModeExternalSoc", func(payload string) error {
+			soc, err := strconv.ParseFloat(strings.TrimSpace(payload), 64)
+			if err != nil {
+				return fmt.Errorf("invalid soc value: %s", payload)
+			}
+			extMode := site.GetBatteryModeExternal()
+			return site.SetBatteryModeExternalSoc(extMode, soc)
+		}},
 	} {
 		if err := m.Handler.ListenSetter(topic+"/"+s.topic, s.fun); err != nil {
 			return err

@@ -55,6 +55,11 @@ func (site *Site) SetBatteryMode(batMode api.BatteryMode) {
 func (site *Site) updateBatteryMode(batteryGridChargeActive bool, rate api.Rate) {
 	batteryMode := site.requiredBatteryMode(batteryGridChargeActive, rate)
 
+	// resolve ChargeToSoc into Charge or NoCharge based on current battery soc
+	if batteryMode == api.BatteryChargeToSoc || batteryMode == api.BatteryUnknown && site.batteryMode == api.BatteryChargeToSoc {
+		batteryMode = site.resolveChargeToSoc()
+	}
+
 	// put battery into hold mode when charging is active and circuit dimmed
 	fromToCharge := batteryMode == api.BatteryCharge || batteryMode == api.BatteryUnknown && site.batteryMode == api.BatteryCharge
 	if fromToCharge && circuitDimmed(site.circuit) {
@@ -111,6 +116,25 @@ func (site *Site) requiredBatteryMode(batteryGridChargeActive bool, rate api.Rat
 	}
 
 	return res
+}
+
+// resolveChargeToSoc resolves ChargeToSoc into Charge or NoCharge based on current battery SOC
+func (site *Site) resolveChargeToSoc() api.BatteryMode {
+	targetSoc := site.GetBatteryModeExternalSoc()
+	if targetSoc <= 0 {
+		site.log.DEBUG.Println("battery chargetosoc: no target soc configured, using charge mode")
+		return api.BatteryCharge
+	}
+
+	batterySoc := site.GetBatterySoc()
+
+	if batterySoc >= targetSoc {
+		site.log.DEBUG.Printf("battery chargetosoc: soc %.0f%% >= target %.0f%%, switching to nocharge", batterySoc, targetSoc)
+		return api.BatteryNoCharge
+	}
+
+	site.log.DEBUG.Printf("battery chargetosoc: soc %.0f%% < target %.0f%%, charging", batterySoc, targetSoc)
+	return api.BatteryCharge
 }
 
 // batteryMaxSocReached checks is battery has exceed max soc limit
