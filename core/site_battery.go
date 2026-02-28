@@ -60,6 +60,11 @@ func (site *Site) updateBatteryMode(batteryGridChargeActive bool, rate api.Rate)
 		batteryMode = site.resolveChargeToSoc()
 	}
 
+	// resolve HoldAtSoc into Hold or Normal based on current battery soc
+	if batteryMode == api.BatteryHoldAtSoc || batteryMode == api.BatteryUnknown && site.batteryMode == api.BatteryHoldAtSoc {
+		batteryMode = site.resolveHoldAtSoc()
+	}
+
 	// put battery into hold mode when charging is active and circuit dimmed
 	fromToCharge := batteryMode == api.BatteryCharge || batteryMode == api.BatteryUnknown && site.batteryMode == api.BatteryCharge
 	if fromToCharge && circuitDimmed(site.circuit) {
@@ -135,6 +140,25 @@ func (site *Site) resolveChargeToSoc() api.BatteryMode {
 
 	site.log.DEBUG.Printf("battery chargetosoc: soc %.0f%% < target %.0f%%, charging", batterySoc, targetSoc)
 	return api.BatteryCharge
+}
+
+// resolveHoldAtSoc resolves HoldAtSoc into Hold or Normal based on current battery SOC
+func (site *Site) resolveHoldAtSoc() api.BatteryMode {
+	targetSoc := site.GetBatteryModeExternalSoc()
+	if targetSoc <= 0 {
+		site.log.DEBUG.Println("battery holdatsoc: no target soc configured, using hold mode")
+		return api.BatteryHold
+	}
+
+	batterySoc := site.GetBatterySoc()
+
+	if batterySoc <= targetSoc {
+		site.log.DEBUG.Printf("battery holdatsoc: soc %.0f%% <= target %.0f%%, holding", batterySoc, targetSoc)
+		return api.BatteryHold
+	}
+
+	site.log.DEBUG.Printf("battery holdatsoc: soc %.0f%% > target %.0f%%, normal", batterySoc, targetSoc)
+	return api.BatteryNormal
 }
 
 // batteryMaxSocReached checks is battery has exceed max soc limit
